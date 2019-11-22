@@ -1,0 +1,28 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1574414004426.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4055236279",
+    "id" : "E9E26D40",
+    "lastKnownWriteTime" : 1574416523,
+    "last_content_update" : 1574416523805,
+    "path" : "C:/Users/7530/Desktop/ml-12/ml-12_final.Rmd",
+    "project_path" : "ml-12_final.Rmd",
+    "properties" : {
+        "chunk_output_type" : "console",
+        "cursorPosition" : "99,29",
+        "last_setup_crc32" : "8595EA6924b158b9",
+        "scrollLine" : "76",
+        "tempName" : "Untitled2"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

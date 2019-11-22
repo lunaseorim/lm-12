@@ -1,0 +1,110 @@
+---
+title: "Untitled"
+author: "aa"
+date: '2019 11 22 '
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(survival)
+library(survminer)
+library(caret)
+```
+
+## DATA
+
+```{r data}
+
+dat <- readxl::read_xlsx("임상데이터_분석용.xlsx")
+
+```
+
+## Data Preprocessing
+
+```{r}
+##성별
+#M=1,F=2
+dat$성별 <- toupper(dat$성별) %>%
+    factor(levels = c("M","F") ,labels = c("M","F"))
+
+##STAGE 
+dat$pStage <- toupper(dat$pStage) %>%
+    factor(levels = c("1A","1B","2A","2B","3A","3B","4"),
+           labels = c("1A","1B","2A","2B","3A","3B","4"))
+
+##size : 데이터 형태가 서로달라 width만 정의
+size_logic <- ifelse(regexpr("\\d\\.\\d|\\d",dat$Size)<0|
+                         is.na(regexpr("\\d\\.\\d|\\d",dat$Size)),F,T)
+size_df <- data.frame(size = dat$Size,logic = size_logic)
+size_df$width[size_logic] <- regmatches(dat$Size,regexpr("\\d\\.\\d|\\d",dat$Size),invert = F) %>%
+    as.numeric()
+
+##Cell type : 조직학적 분류
+CT_names = c("ADC","SQC","LAC")
+for (i in 1:length(CT_names)) {
+    CT_ordered_logic <- regexpr(CT_names[i],dat$`Cell type`)>0
+    dat$`Cell type`[CT_ordered_logic] <- regmatches(dat$`Cell type`,
+                                                    regexpr(CT_names[i],dat$`Cell type`),
+                                                    invert = F)
+}
+dat$`Cell type` <- factor(dat$`Cell type`,
+                          levels = CT_names,
+                          labels = CT_names)
+
+##Differentiation : 분화,미분화형 
+#PD-Poorly/MD-Moderately/WD-Well
+DT_names = c("PD","MD","WD")
+for (i in 1:length(DT_names)) {
+    DT_ordered_logic <- regexpr(DT_names[i],dat$Differentiation)>0
+    DT_logic_NA <- ifelse(!is.na(DT_ordered_logic),DT_ordered_logic,F)
+    dat$Differentiation[DT_logic_NA] <- regmatches(dat$Differentiation,
+                                                    regexpr(DT_names[i],dat$Differentiation),
+                                                    invert = F)
+}
+
+dat$Differentiation <- factor(dat$Differentiation,
+                              labels = DT_names,
+                              levels = DT_names)
+
+##림프절 침범여부 Regional lymph nodes (N) of TNM Stage
+#N*= 0 , N*>0 = 1
+N_stage <- c("N1","N2","N3")
+Nodes_logic <- regexpr(N_stage[1],dat$pTNM)>0|
+    regexpr(N_stage[2],dat$pTNM)>0|
+    regexpr(N_stage[3],dat$pTNM)>0
+
+cLN <- ifelse(Nodes_logic==T,1,0)
+##암전이 여부 Distant metastasis (M) of TNM Stage
+#0=M0, 1=M1
+cMS <- ifelse(regexpr("M1",dat$pTNM)>0,1,0)
+
+#새로만들기
+varname <- c("성별","Age","pStage","Cell type","(+) LN 수","LN 총 수",
+             "P 53a","P 53b","ki 67a","ki 67b","Differentiation")
+datset <- subset(dat,select = varname) %>%
+    cbind(size_df$width,cLN,cMS) %>%
+    na.omit() %>%
+    data.frame() %>%
+  `colnames<-`(c("Sex","Age","pStage","Cell.type","LN수(+)","LN총수",
+                 "P.53a","P.53b","ki.67a","ki.67b","Differentiation","width","cLN","cMS" ))
+
+```
+## step
+
+```{r step}
+dat_names <- colnames(datset)
+
+for (i in 4:10) {
+  a <- coxph(Surv(time,status==2)~train1[,i],data = train1)
+  print(paste0("i=",colnames(train1)[i]))
+  print(summary(a))
+}
+
+
+```
+
