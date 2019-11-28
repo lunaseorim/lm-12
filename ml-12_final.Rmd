@@ -125,6 +125,8 @@ for (i in c(1:11,14:16)) {
 }
 asys_1st
 
+
+
 # 2nd (LN수(+):5)
 asys_2nd <- NULL
 for (i in c(1:4,6:11,14:16)) {
@@ -202,11 +204,16 @@ f_m <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data =
 
 summary(f_m)
 
+png("Hazard_Ratio.png",width = 6.5, height = 4.9,units = "in",res = 1200)
 ggforest(f_m,data = datset)
+dev.off()
 
 
+cox.zph(f_m)
 
 ```
+
+#PLOT dda
 
 ```{r}
 result_a <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset)
@@ -220,7 +227,7 @@ model_result <- summary(coxph(Surv(Time,status==1) ~ df_a$Predict_cox, data=df_a
 logrank_a <- model_result$logtest[3]
 
 # model + rx
-result_b <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage, data = datset)
+result_b <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a, data = datset)
 median_b <- median(predict(result_b, data=datset))
 df_b = cbind(datset[,colnames(datset)=='time'], datset[,colnames(datset)=='status'], predict(result_b, data=datset))
 colnames(df_b) <- c('Time','status', 'Predict')
@@ -237,25 +244,18 @@ fit1 <- survfit(Surv(Time,status==1) ~ df_a$Predict_cox, data=df_a)
 plot(fit1, col = 2:1, lty = 2:3)
 legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
 
+
+ggsurvplot(fit1,
+           xlab = "Time(days)",
+           linetype = 1,
+           surv.median.line = "hv") +
+ labs(title = "Survival Curves")
+  
+
 # kaplan-meier curve (model+rx)
 
 fit2 <- survfit(Surv(Time,status==T) ~ df_b$Predict_cox, data=df_b)
 plot(fit2, col = 2:1, lty = 2:3)
-legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
-
-
-
-result_b <- coxph(Surv(time,status==1)~`LN수(+)`+stage+Cell.type+ki.67a, data = datset)
-median_b <- median(predict(result_b, data=datset))
-df_b = cbind(datset[,colnames(datset)=='time'], datset[,colnames(datset)=='status'], predict(result_b, data=datset))
-colnames(df_b) <- c('Time','status', 'Predict')
-df_b <- data.frame(df_b)
-df_b$Predict_cox[(df_b$Predict >= median_b)] <- "High Risk"
-df_b$Predict_cox[(df_b$Predict < median_b)] <- "Low Risk"
-model_result_b <- summary(coxph(Surv(Time,status==1) ~ df_b$Predict_cox, data=df_b))
-logrank_b <- model_result_b$logtest[3]
-fit3 <- survfit(Surv(Time,status==1) ~ df_c$Predict_cox, data=df_a)
-plot(fit3, col = 2:1, lty = 2:3)
 legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
 
 
