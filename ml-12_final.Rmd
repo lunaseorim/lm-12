@@ -14,6 +14,7 @@ library(ggplot2)
 library(survival)
 library(survminer)
 library(caret)
+library(muhaz)
 ```
 
 ## DATA
@@ -197,25 +198,77 @@ for (i in c(1:2,6:8,10,11,15:16)) {
 }
 asys_6th
 
-summary(coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset))
-
-f_m <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset)
+ggforest(coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset))
 
 
-summary(f_m)
+## Age+Sex+Stage 1st
+asys_1st <- NULL
+for (i in c(4:11,15:16)) {
+  model <- coxph(Surv(time,status==T)~Age+Sex+stage+datset[,i],data = datset)
+  table <- rbind(asys_1st,
+                 data.frame(name = colnames(datset)[i],
+                            coef = summary(model)$coefficients[4,1],
+                            pvalue = summary(model)$coefficients[4,5]
+                 )
+  )
+  asys_1st <- table
+}
+asys_1st
 
-png("Hazard_Ratio.png",width = 6.5, height = 4.9,units = "in",res = 1200)
-ggforest(f_m,data = datset)
-dev.off()
+## Age+Sex+Stage(+LN수(+)) 2nd
+asys_2nd <- NULL
+for (i in c(4,6:11,15:16)) {
+  model <- coxph(Surv(time,status==T)~Age+Sex+stage+`LN수(+)`+datset[,i],data = datset)
+  table <- rbind(asys_2nd,
+                 data.frame(name = colnames(datset)[i],
+                            coef = summary(model)$coefficients[5,1],
+                            pvalue = summary(model)$coefficients[5,5]
+                 )
+  )
+  asys_2nd <- table
+}
+asys_2nd
 
 
-cox.zph(f_m)
+## Age+Sex+Stage(+LN수(+),Cell.type) 3rd
+asys_3rd <- NULL
+for (i in c(6:11,15:16)) {
+  model <- coxph(Surv(time,status==T)~Age+Sex+stage+`LN수(+)`+Cell.type+datset[,i],data = datset)
+  table <- rbind(asys_3rd,
+                 data.frame(name = colnames(datset)[i],
+                            coef = summary(model)$coefficients[6,1],
+                            pvalue = summary(model)$coefficients[6,5]
+                 )
+  )
+  asys_3rd <- table
+}
+asys_3rd
+
+## Age+Sex+Stage(+LN수(+),Cell.type,ki.67a) 4th
+asys_4th <- NULL
+for (i in c(6:8,10:11,15:16)) {
+  model <- coxph(Surv(time,status==T)~Age+Sex+stage+`LN수(+)`+Cell.type+ki.67a+datset[,i],data = datset)
+  table <- rbind(asys_4th,
+                 data.frame(name = colnames(datset)[i],
+                            coef = summary(model)$coefficients[7,1],
+                            pvalue = summary(model)$coefficients[7,5]
+                 )
+  )
+  asys_4th <- table
+}
+asys_4th
+
+md_2nd_full <- coxph(Surv(time,status==T)~Age+Sex+stage+`LN수(+)`+Cell.type+ki.67a,data = datset)
+summary(md_2nd_full)
+
 
 ```
 
 #PLOT dda
 
 ```{r}
+
+#1st model
 result_a <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset)
 median_a <- median(predict(result_a, data=datset))
 df_a = cbind(datset[,colnames(datset)=='time'], datset[,colnames(datset)=='status'], predict(result_a, data=datset))
@@ -226,8 +279,8 @@ df_a$Predict_cox[(df_a$Predict < median_a)] <- "Low Risk"
 model_result <- summary(coxph(Surv(Time,status==1) ~ df_a$Predict_cox, data=df_a))
 logrank_a <- model_result$logtest[3]
 
-# model + rx
-result_b <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a, data = datset)
+#2nd model based sex+age+stage
+result_b <- md_2nd_full
 median_b <- median(predict(result_b, data=datset))
 df_b = cbind(datset[,colnames(datset)=='time'], datset[,colnames(datset)=='status'], predict(result_b, data=datset))
 colnames(df_b) <- c('Time','status', 'Predict')
@@ -245,18 +298,77 @@ plot(fit1, col = 2:1, lty = 2:3)
 legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
 
 
-ggsurvplot(fit1,
-           xlab = "Time(days)",
-           linetype = 1,
-           surv.median.line = "hv") +
- labs(title = "Survival Curves")
-  
-
 # kaplan-meier curve (model+rx)
 
-fit2 <- survfit(Surv(Time,status==T) ~ df_b$Predict_cox, data=df_b)
+fit2 <- survfit(Surv(time,status==T) ~ df_b$Predict_cox , data=df_b)
 plot(fit2, col = 2:1, lty = 2:3)
 legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
+
+
+```
+
+## Dif. added
+
+```{r}
+
+fit3 <- survfit(Surv(time,status==T) ~ Differentiation , data=datset)
+plot(fit3, col = 3:1, lty = 1:3)
+legend('topright', legend = c("PD","MD","WD"), lty = 3:1, col = 1:3)
+
+datset1$Differentiation <- ifelse(datset1$Differentiation == "PD",
+                                 0,1)
+
+
+
+#1st model
+result_a <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset1)
+median_a <- median(predict(result_a, data=datset1))
+df_a = cbind(datset1[,colnames(datset1)=='time'], datset1[,colnames(datset1)=='status'], predict(result_a, data=datset1))
+colnames(df_a) <- c('Time','status', 'Predict')
+df_a <- data.frame(df_a)
+df_a$Predict_cox[(df_a$Predict >= median_a)] <- "High Risk"
+df_a$Predict_cox[(df_a$Predict < median_a)] <- "Low Risk"
+model_result <- summary(coxph(Surv(Time,status==1) ~ df_a$Predict_cox, data=df_a))
+logrank_a <- model_result$logtest[3]
+
+#1st model+dif.
+result_b <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a+Differentiation,data = datset1)
+median_b <- median(predict(result_b, data=datset1))
+df_b = cbind(datset1[,colnames(datset1)=='time'], datset1[,colnames(datset1)=='status'], predict(result_b, data=datset1))
+colnames(df_b) <- c('Time','status', 'Predict')
+df_b <- data.frame(df_b)
+df_b$Predict_cox[(df_b$Predict >= median_b)] <- "High Risk"
+df_b$Predict_cox[(df_b$Predict < median_b)] <- "Low Risk"
+model_result_b <- summary(coxph(Surv(Time,status==1) ~ df_b$Predict_cox, data=df_b))
+logrank_b <- model_result_b$logtest[3]
+
+# kaplan-meier curve (model)
+par(mfrow=c(1,2))
+fit1 <- survfit(Surv(Time,status==1) ~ df_a$Predict_cox, data=df_a)
+plot(fit1, col = 2:1, lty = 2:3)
+legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
+
+# kaplan-meier curve (model+rx)
+fit2 <- survfit(Surv(Time,status==T) ~ df_b$Predict_cox , data=df_b)
+plot(fit2, col = 2:1, lty = 2:3)
+legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
+
+#1st model+dif.
+result_c <- coxph(Surv(time,status==1)~Differentiation,data = datset1)
+median_c <- median(predict(result_c, data=datset1))
+df_c = cbind(datset1[,colnames(datset1)=='time'], datset1[,colnames(datset1)=='status'], predict(result_c, data=datset1))
+colnames(df_c) <- c('Time','status', 'Predict')
+df_c <- data.frame(df_c)
+df_c$Predict_cox[(df_c$Predict > median_c)] <- "High Risk"
+df_c$Predict_cox[(df_c$Predict <= median_c)] <- "Low Risk"
+model_result_c <- summary(coxph(Surv(Time,status==1) ~ df_c$Predict_cox, data=df_c))
+logrank_c <- model_result_c$logtest[3]
+
+# kaplan-meier curve (model+rx)
+fit3 <- survfit(Surv(Time,status==T) ~ df_c$Predict_cox , data=df_c)
+plot(fit3, col = 2:1, lty = 2:3)
+legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
+
 
 
 ```
