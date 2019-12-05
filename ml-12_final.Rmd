@@ -373,3 +373,41 @@ legend('topright', legend = c('Low Risk', 'High Risk'), lty = 3:2, col = 1:2)
 
 ```
 
+
+##Proportional hazard 가정 (H0:비례위험 가정을 만족한다.)
+
+```{r}
+md_1st_full <- coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset1)
+summary(md_1st_full)
+cox.zph(coxph(Surv(time,status==1)~`LN수(+)`+width+stage+Cell.type+ki.67a,data = datset1))
+
+
+cox.zph(md_2nd_full)
+
+```
+
+
+##재발만 따로
+
+```{r}
+haz_df<-datset1[datset1$status==1,]
+
+haz_table <- table(cut(haz_df$time,breaks = seq(0,2500,20))) %>%
+  data.frame()
+
+hist(haz_df$time,breaks = seq(0,2500,20),freq = F,xlim = c(0,1000),
+     main = "위험함수",xlab="time(days)",ylab="hazard ratio")
+
+
+#위험함수
+
+png("test.png",width = 6.5, height = 4.9,units = "in",res = 1200)
+plot(density(haz_df$time,from = 0,to=1000,
+             width = 80),
+     xlab = "days",
+     ylab = "위험률",
+     main = "재발 위험함수")
+dev.off()
+
+
+```
